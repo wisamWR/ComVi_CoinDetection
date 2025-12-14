@@ -35,7 +35,10 @@ A real-time coin detection system using YOLOv11 object detection model. This pro
    ```bash
    pip install ultralytics opencv-python numpy
    ```
-
+4. **Download Dataset**
+   ```bash
+   https://drive.google.com/drive/folders/1c_2RwK_o2stlLlsr9VmHqMolFCFWW-yj?usp=sharing
+   ```
 ## 📁 Project Structure
 
 ```
