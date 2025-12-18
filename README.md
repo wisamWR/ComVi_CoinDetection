@@ -1,6 +1,6 @@
 # Coin Detection with YOLOv11
 
-A real-time coin detection system using YOLOv11 object detection model. This project can detect and classify four types of US coins: penny, nickel, dime, and quarter.
+A real-time coin detection system using YOLO v11 object detection model. This project can detect and classify four types of US coins: penny, nickel, dime, and quarter.
 
 ## 🎯 Features
 
