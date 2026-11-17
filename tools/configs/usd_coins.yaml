@@ -1,0 +1,12 @@
+# US coins: original ComVi_CoinDetection dataset (750 images, labelled in Label Studio).
+raw_dir: data/raw
+out_dir: data/processed/usd_coins
+seed: 0
+dhash_max_dist: 8
+split: {val: 0.1, test: 0.1}
+
+classes: [usd_penny, usd_nickel, usd_dime, usd_quarter]
+
+sources:
+  - dir: usd-coins/dataset
+    classes: {penny: usd_penny, nickel: usd_nickel, dime: usd_dime, quarter: usd_quarter}

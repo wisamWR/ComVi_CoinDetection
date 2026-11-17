@@ -1,0 +1,27 @@
+# Indonesian Rupiah banknotes (emisi 2016 + 2022), 7 denominations.
+raw_dir: data/raw
+out_dir: data/processed/idr_notes
+seed: 0
+dhash_max_dist: 8   # out of 256 bits; sources re-upload the same photos
+split: {val: 0.1, test: 0.1}
+train_max_per_key: 30   # one source is 14 videos x 500 frames; keep it from dominating train
+
+classes: [idr_1000, idr_2000, idr_5000, idr_10000, idr_20000, idr_50000, idr_100000]
+
+sources:
+  - dir: rupiah-emisi-2022-xqjcj   # CC BY 4.0; l2_*/l3_* (nominal/security areas) dropped
+    classes: {"001": idr_1000, "002": idr_2000, "005": idr_5000, "010": idr_10000,
+              "020": idr_20000, "050": idr_50000, "100": idr_100000}
+  - dir: indonesia-rupiah-detection   # CC BY 4.0
+    classes: {"1000": idr_1000, "2000": idr_2000, "5000": idr_5000, "10000": idr_10000,
+              "20000": idr_20000, "50000": idr_50000, "100000": idr_100000}
+  - dir: uang-rupiah-baru   # Public Domain
+    classes: {1k: idr_1000, 2k: idr_2000, 5k: idr_5000, 10k: idr_10000,
+              20k: idr_20000, 50k: idr_50000, 100k: idr_100000}
+  - dir: uang-rupiah-oyrxk-qkrud   # CC BY 4.0; "* koin" classes dropped
+    classes: {"1000": idr_1000, "2000": idr_2000, "5000": idr_5000, "10000": idr_10000,
+              "20000": idr_20000, "50000": idr_50000, "100000": idr_100000}
+  - dir: uang-rupiah-kertas-dan-koin-by-adelia-clarissa-zzt2j   # CC BY 4.0; coins "500"/"1000" dropped
+    group_strip: "-\\d+_jpg$"   # video frames "<video>_mp4-0002_jpg" -> one group per video
+    classes: {1rb: idr_1000, 2rb: idr_2000, 5rb: idr_5000, 10rb: idr_10000,
+              20rb: idr_20000, 50rb: idr_50000, 100rb: idr_100000}

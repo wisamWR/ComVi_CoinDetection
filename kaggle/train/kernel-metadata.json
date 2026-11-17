@@ -1,0 +1,13 @@
+{
+  "id": "mehmedwisam/comvi-money-detection-train",
+  "title": "comvi-money-detection-train",
+  "code_file": "train.py",
+  "language": "python",
+  "kernel_type": "script",
+  "is_private": true,
+  "enable_gpu": true,
+  "enable_internet": true,
+  "dataset_sources": ["mehmedwisam/comvi-money-detection"],
+  "competition_sources": [],
+  "kernel_sources": []
+}
