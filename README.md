@@ -1,176 +1,166 @@
-# Coin Detection with YOLOv11
+# ComVi Money Detection
 
-A real-time coin detection system using YOLO v11 object detection model. This project can detect and classify four types of US coins: penny, nickel, dime, and quarter.
+Detect money in photos, video or a live camera, and count the total value. One YOLO26 detector per currency:
 
-## 🎯 Features
+| Model | Detects | Classes |
+|---|---|---|
+| `models/idr_notes.pt` | Indonesian Rupiah banknotes | Rp 1.000, 2.000, 5.000, 10.000, 20.000, 50.000, 100.000 |
+| `models/usd_coins.pt` | US coins | penny, nickel, dime, quarter |
 
-- Real-time coin detection from webcam feed
-- Support for image, video, and USB camera sources
-- Custom-trained YOLOv11 model with 93.9% mAP50-95
-- Detects 4 coin types: penny, nickel, dime, quarter
-- Video recording capability
-- Configurable confidence threshold and resolution
+Each currency has its own model. Coins and notes look very different, and separate models stay smaller and can be retrained on their own.
 
-## 📋 Prerequisites
+## Results
 
-- Python 3.8 or higher
-- Conda (Anaconda or Miniconda)
-- USB webcam (for real-time detection)
+Measured on a held-out **test** split that was never used for training or model selection. Splits are grouped by the original photo or video, so near-duplicate images never appear in two splits.
 
-## 🚀 Installation
+| Model | Test images | mAP50 | mAP50-95 | Precision | Recall |
+|---|---|---|---|---|---|
+| IDR notes | 326 | 95.3% | 86.7% | 82.4% | 92.2% |
+| USD coins | 74 | 97.8% | 89.1% | 96.9% | 98.3% |
 
-1. **Clone or download this repository**
-   ```bash
-   git clone <your-repo-url>
-   cd ComVi_CoinDetection
-   ```
+Per-class mAP50-95:
 
-2. **Create and activate conda environment**
-   ```bash
-   conda create -n yolo-env1 python=3.10
-   conda activate yolo-env1
-   ```
+| IDR | 1k | 2k | 5k | 10k | 20k | 50k | 100k |
+|---|---|---|---|---|---|---|---|
+| | 87.3 | 89.3 | 87.8 | 84.0 | 85.0 | 84.9 | 88.4 |
 
-3. **Install dependencies**
-   ```bash
-   pip install ultralytics opencv-python numpy
-   ```
-4. **Download Dataset**
-   ```bash
-   https://drive.google.com/drive/folders/1c_2RwK_o2stlLlsr9VmHqMolFCFWW-yj?usp=sharing
-   ```
-## 📁 Project Structure
+| USD | penny | nickel | dime | quarter |
+|---|---|---|---|---|
+| | 91.0 | 86.9 | 88.2 | 90.5 |
+
+Inference is about 10 ms per image on a Tesla T4 at 640 px. Full metrics are in `models/*.metrics.json`.
+
+**Known limitations**
+- IDR precision (82%) is lower than recall, so expect some false or duplicate boxes. Raising `--thresh` helps.
+- The IDR test set comes mostly from two Roboflow sources. Photos from other cameras, lighting or backgrounds may score lower.
+- The IDR model covers banknotes only. Rupiah coins are not detected yet.
+- The v1 README reported 94.0% mAP50-95 for the coin model. That figure came from the validation set used during training. The 89.1% above is from a separate test split, so it is a fairer estimate.
+
+## Install
+
+Python 3.10+.
+
+```bash
+git clone https://github.com/wisamWR/ComVi_CoinDetection.git
+cd ComVi_CoinDetection
+pip install -r requirements.txt
+```
+
+## Web app (Streamlit)
+
+```bash
+streamlit run app.py
+```
+
+Pick a currency in the sidebar, then upload a photo or use the camera. The app shows the detected denominations and the total value.
+
+## Command line
+
+```bash
+# Webcam, Rupiah
+python money_detect.py --currency idr --source usb0 --resolution 1280x720
+
+# Single image or a folder of images, US coins
+python money_detect.py --currency usd --source coins.jpg
+python money_detect.py --currency usd --source ./photos/
+
+# Video, with a stricter threshold, recorded to demo1.avi
+python money_detect.py --currency idr --source notes.mp4 --thresh 0.6 --resolution 1280x720 --record
+```
+
+| Argument | Description | Default |
+|---|---|---|
+| `--currency` | `idr` or `usd` | required |
+| `--source` | image, folder, video, `usb0`, `picamera0` | required |
+| `--thresh` | minimum confidence | `0.5` |
+| `--resolution` | display resolution `WxH` | source resolution |
+| `--record` | record video/camera output to `demo1.avi` | off |
+| `--model` | custom weights path | `models/<currency>.pt` |
+| `--device` | `cpu`, `0`, ... | auto |
+
+Keys: **Q** quit, **S** pause, **P** save `capture.png`.
+
+## Using it from Python
+
+```python
+import cv2
+from money_detection import MoneyDetector
+
+detector = MoneyDetector("idr")
+frame = cv2.imread("wallet.jpg")
+dets = detector.detect(frame, conf=0.5)
+cur = detector.currency
+print(cur.format(cur.total(d.cls for d in dets)))   # e.g. "Rp 175.000"
+```
+
+## Project structure
 
 ```
 ComVi_CoinDetection/
-├── my_model/
-│   ├── my_model.pt          # Trained YOLOv11 weights
-│   └── train/               # Training results and metrics
-├── yolo_detect.py           # Detection script
-└── README.md
+├── app.py                    # Streamlit web app
+├── money_detect.py           # CLI: image / folder / video / camera
+├── money_detection/          # detector wrapper + currency definitions
+├── models/                   # trained weights + test metrics
+├── tools/
+│   ├── download_roboflow.py  # fetch source datasets (needs ROBOFLOW_API_KEY)
+│   ├── build_dataset.py      # merge, de-duplicate, leak-free split
+│   └── configs/              # one YAML per dataset
+├── kaggle/train/             # Kaggle GPU training job (T4 x2)
+├── tests/
+└── archive/                  # v1 Colab notebook (YOLOv11, US coins only)
 ```
 
-## 🎮 Usage
+## Reproducing the models
 
-### Basic Usage (Webcam)
+1. **Get the source data.**
+   - Rupiah: run `python tools/download_roboflow.py data/raw` with `ROBOFLOW_API_KEY` set.
+   - US coins: use the original dataset ([Google Drive](https://drive.google.com/drive/folders/1c_2RwK_o2stlLlsr9VmHqMolFCFWW-yj?usp=sharing)), placed under `data/raw/usd-coins/`.
+2. **Build the datasets:**
+   ```bash
+   python tools/build_dataset.py --config tools/configs/idr_notes.yaml
+   python tools/build_dataset.py --config tools/configs/usd_coins.yaml
+   ```
+   The builder does three things:
+   - It merges all sources and finds near-duplicate photos with a perceptual hash (dHash). Many Roboflow projects re-upload the same images.
+   - It keeps every group of duplicates inside one split, and keeps one image per group in val and test.
+   - It caps each original photo or video at 30 images in train.
+3. **Train on Kaggle.** Upload `data/processed` as a Kaggle dataset, then run:
+   ```bash
+   kaggle kernels push -p kaggle/train --accelerator NvidiaTeslaT4
+   ```
+   The job trains with DDP on both T4 GPUs and writes `best.pt` and `metrics.json` for each currency.
 
-```bash
-conda activate yolo-env1
-cd C:\Users\wisam\Documents\ComVi_CoinDetection\my_model
-curl -o yolo_detect.py https://www.ejtech.io/code/yolo_detect.py
-python yolo_detect.py --model my_model.pt --source usb0 --resolution 1280x720
-```
+Training setup: YOLO26s, 640 px, batch 32, up to 100 epochs with early stopping (patience 20).
 
-### Command Line Arguments
+| Model | Epochs run | Best epoch | Training time |
+|---|---|---|---|
+| USD coins | 100 | 80 | 12 min |
+| IDR notes | 84 | 64 | 3 h |
 
-| Argument | Description | Example | Required |
-|----------|-------------|---------|----------|
-| `--model` | Path to YOLO model file | `my_model.pt` | Yes |
-| `--source` | Input source | `usb0`, `test.jpg`, `video.mp4` | Yes |
-| `--thresh` | Confidence threshold | `0.5` (default) | No |
-| `--resolution` | Display resolution | `1280x720` | No |
-| `--record` | Record output video | Flag only | No |
+## Data sources
 
-### Usage Examples
+Rupiah banknote data comes from these Roboflow Universe projects, merged and de-duplicated:
 
-**1. Webcam detection with custom resolution:**
-```bash
-python yolo_detect.py --model my_model.pt --source usb0 --resolution 1280x720
-```
+| Project | Author | License |
+|---|---|---|
+| rupiah-emisi-2022 | dimas | CC BY 4.0 |
+| indonesia-rupiah-detection | | CC BY 4.0 |
+| uang-rupiah-baru | 4IA17 | Public Domain |
+| uang-rupiah | project-lca4e | CC BY 4.0 |
+| uang-rupiah-kertas-dan-koin | Adelia Clarissa | CC BY 4.0 |
 
-**2. Detect coins in a single image:**
-```bash
-python yolo_detect.py --model my_model.pt --source coin_image.jpg
-```
+The US coin data is the original ComVi dataset (750 images).
 
-**3. Process video file:**
-```bash
-python yolo_detect.py --model my_model.pt --source coins_video.mp4 --resolution 640x480
-```
+## License
 
-**4. Detect from folder of images:**
-```bash
-python yolo_detect.py --model my_model.pt --source ./test_images/
-```
+[AGPL-3.0](LICENSE). The project uses [Ultralytics YOLO](https://github.com/ultralytics/ultralytics), which is AGPL-3.0, so the code and trained weights are distributed under the same license. v1 of this repo was MIT.
 
-**5. Record webcam detection:**
-```bash
-python yolo_detect.py --model my_model.pt --source usb0 --resolution 1280x720 --record
-```
-
-**6. Custom confidence threshold:**
-```bash
-python yolo_detect.py --model my_model.pt --source usb0 --thresh 0.7
-```
-
-## ⌨️ Keyboard Controls
-
-While running detection:
-- **Q**: Quit the program
-- **S**: Pause/resume inference
-- **P**: Save screenshot as `capture.png`
-
-## 📊 Model Performance
-
-The trained YOLOv11s model achieves:
-- **Overall mAP50-95**: 94.0%
-- **Overall mAP50**: 99.3%
-
-Per-class performance:
-| Coin | Precision | Recall | mAP50 | mAP50-95 |
-|------|-----------|--------|-------|----------|
-| Penny | 99.9% | 100% | 99.5% | 95.3% |
-| Nickel | 96.3% | 98.5% | 99.0% | 91.0% |
-| Dime | 99.6% | 98.6% | 99.5% | 95.1% |
-| Quarter | 97.1% | 96.3% | 99.3% | 94.4% |
-
-## 🏋️ Model Training
-
-The model was trained on Google Colab with:
-- **Base model**: YOLOv11s
-- **Dataset**: 750 images (675 train, 75 validation)
-- **Epochs**: 60
-- **Image size**: 640x640
-- **Hardware**: Tesla T4 GPU
-
-Training notebook: `Coin_Detection_Models.ipynb`
-
-## 🛠️ Troubleshooting
-
-**Camera not detected:**
-- Check if camera is properly connected
-- Try different USB ports (usb0, usb1, etc.)
-- Ensure no other application is using the camera
-
-**Low FPS:**
-- Reduce resolution: `--resolution 640x480`
-- Close other applications
-- Ensure GPU drivers are updated
-
-**Model not found:**
-- Verify you're in the correct directory
-- Check model path: `--model path/to/my_model.pt`
-
-## 📝 Notes
-
-- First run will download required model files
-- Webcam detection shows real-time FPS counter
-- Recorded videos are saved as `demo1.avi`
-- Screenshots are saved as `capture.png`
-
-## 🤝 Contributing
-
-Feel free to open issues or submit pull requests for improvements!
-
-## 📄 License
-
-This project is open source and available under the MIT License.
-
-## 👤 Author
+## Author
 
 Mohammad Wisam Wiraghina
 
-## 🙏 Acknowledgments
+## Acknowledgments
 
-- [Ultralytics](https://github.com/ultralytics/ultralytics) for YOLO implementation
-- [EdjeElectronics](https://github.com/EdjeElectronics) for training utilities
+- [Ultralytics](https://github.com/ultralytics/ultralytics) for YOLO26
+- [EdjeElectronics](https://github.com/EdjeElectronics) for the original detection script that `money_detect.py` grew from
+- The Roboflow Universe dataset authors listed above
