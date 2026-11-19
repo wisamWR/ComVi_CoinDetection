@@ -41,7 +41,8 @@ left, right = st.columns([3, 2])
 left.image(annotate(frame, dets, currency)[:, :, ::-1])
 
 classes = [d.cls for d in dets]
-right.metric("Total", currency.format(currency.total(classes)), f"{len(dets)} item terdeteksi", delta_color="off")
+right.metric("Total", currency.format(currency.total(classes)), f"{len(dets)} item terdeteksi",
+             delta_color="off", delta_arrow="off")
 if dets:
     right.table([{"Pecahan": label, "Jumlah": n, "Subtotal": currency.format(sub)}
                  for label, n, sub in currency.breakdown(classes)])
