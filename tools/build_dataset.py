@@ -1,7 +1,8 @@
 """Merge Roboflow YOLO exports into one clean, leak-free detection dataset.
 
 Steps:
-  1. Remap each source's class names to canonical classes (unmapped boxes dropped).
+  1. Remap each source's class names to canonical classes (unmapped boxes dropped),
+     then drop boxes nested inside a same-class box (labelled note parts).
   2. Group Roboflow augmentation copies by original filename stem.
   3. Merge groups whose images are near-duplicates (dHash), across sources too.
   4. Split by group (no group spans two splits). Val/test keep one image per group.
@@ -58,6 +59,25 @@ def read_labels(path, remap):
     return out
 
 
+def drop_nested(boxes, tol=0.01):
+    """Drop boxes lying inside a larger (or identical, earlier) box of the same class.
+
+    Some sources label parts of a note (logo, portrait) with the note's own class
+    next to the whole note; training on those teaches the model to count one note twice.
+    """
+    def inside(a, b):
+        return (a[1] - a[3] / 2 >= b[1] - b[3] / 2 - tol and a[1] + a[3] / 2 <= b[1] + b[3] / 2 + tol and
+                a[2] - a[4] / 2 >= b[2] - b[4] / 2 - tol and a[2] + a[4] / 2 <= b[2] + b[4] / 2 + tol)
+
+    keep = []
+    for i, a in enumerate(boxes):
+        if not any(j != i and b[0] == a[0] and inside(a, b) and
+                   (a[3] * a[4] < b[3] * b[4] or (a[3] * a[4] == b[3] * b[4] and j < i))
+                   for j, b in enumerate(boxes)):
+            keep.append(a)
+    return keep
+
+
 class UnionFind:
     def __init__(self, n):
         self.p = list(range(n))
@@ -98,7 +118,7 @@ def collect(cfg):
                 stem, ext = os.path.splitext(fn)
                 if ext.lower() not in IMG_EXT:
                     continue
-                boxes = read_labels(os.path.join(lbl_dir, stem + ".txt"), remap)
+                boxes = drop_nested(read_labels(os.path.join(lbl_dir, stem + ".txt"), remap))
                 if not boxes:
                     continue
                 key = RF_SUFFIX.sub("", stem)

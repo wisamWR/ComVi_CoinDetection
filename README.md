@@ -15,14 +15,14 @@ Measured on a held-out **test** split that was never used for training or model 
 
 | Model | Test images | mAP50 | mAP50-95 | Precision | Recall |
 |---|---|---|---|---|---|
-| IDR notes | 326 | 95.3% | 86.7% | 82.4% | 92.2% |
+| IDR notes | 326 | 98.6% | 92.4% | 99.0% | 98.4% |
 | USD coins | 74 | 97.8% | 89.1% | 96.9% | 98.3% |
 
 Per-class mAP50-95:
 
 | IDR | 1k | 2k | 5k | 10k | 20k | 50k | 100k |
 |---|---|---|---|---|---|---|---|
-| | 87.3 | 89.3 | 87.8 | 84.0 | 85.0 | 84.9 | 88.4 |
+| | 92.1 | 91.3 | 94.4 | 93.9 | 88.9 | 90.8 | 95.5 |
 
 | USD | penny | nickel | dime | quarter |
 |---|---|---|---|---|
@@ -31,7 +31,7 @@ Per-class mAP50-95:
 Inference is about 10 ms per image on a Tesla T4 at 640 px. Full metrics are in `models/*.metrics.json`.
 
 **Known limitations**
-- IDR precision (82%) is lower than recall, so expect some false or duplicate boxes. Raising `--thresh` helps.
+- The first IDR evaluation reported 82.4% precision and 86.7% mAP50-95. One source (`rupiah-emisi-2022`) also labels parts of a note (logo, portrait) with the note's class, so correct single-note predictions were scored as misses. `tools/build_dataset.py` now drops boxes nested inside a same-class box; the numbers above are the same model scored on the cleaned test labels.
 - The IDR test set comes mostly from two Roboflow sources. Photos from other cameras, lighting or backgrounds may score lower.
 - The IDR model covers banknotes only. Rupiah coins are not detected yet.
 - The v1 README reported 94.0% mAP50-95 for the coin model. That figure came from the validation set used during training. The 89.1% above is from a separate test split, so it is a fairer estimate.

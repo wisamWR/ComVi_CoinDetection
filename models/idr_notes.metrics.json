@@ -23,5 +23,21 @@
     "inference": 9.683252429461787,
     "loss": 0.0004588282201349867,
     "postprocess": 0.9741553742194119
+  },
+  "test_clean_labels": {
+    "note": "same weights, test labels rebuilt with drop_nested (2026-11-20)",
+    "mAP50": 0.986,
+    "mAP50-95": 0.924,
+    "precision": 0.99,
+    "recall": 0.984,
+    "per_class_mAP50-95": {
+      "idr_1000": 0.921,
+      "idr_2000": 0.913,
+      "idr_5000": 0.944,
+      "idr_10000": 0.939,
+      "idr_20000": 0.889,
+      "idr_50000": 0.908,
+      "idr_100000": 0.955
+    }
   }
 }
